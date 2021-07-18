@@ -33,10 +33,6 @@ void ADomHud::DrawHUD()
 
 	bool bHMDDeviceActive = false;
 
-	// We dont want the onscreen hud when using a HMD device	
-#if HMD_MODULE_INCLUDED
-	bHMDDeviceActive = GEngine->IsStereoscopic3D();
-#endif // HMD_MODULE_INCLUDED
 	if( bHMDDeviceActive == false )
 	{
 		// Get our vehicle so we can check if we are in car. If we are we don't want onscreen HUD

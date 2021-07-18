@@ -1,8 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "DomPawn.h"
-#include "DomWheelFront.h"
-#include "DomWheelRear.h"
 #include "DomHud.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -12,22 +10,12 @@
 #include "Components/AudioComponent.h"
 #include "Sound/SoundCue.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
-#include "WheeledVehicleMovementComponent4W.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/Engine.h"
 #include "GameFramework/Controller.h"
 #include "UObject/ConstructorHelpers.h"
+#include "ChaosVehicleMovementComponent.h"
 #include "GameFramework/PlayerController.h"
-
-#ifndef HMD_MODULE_INCLUDED
-#define HMD_MODULE_INCLUDED 0
-#endif
-
-// Needed for VR Headset
-#if HMD_MODULE_INCLUDED
-#include "IXRTrackingSystem.h"
-#include "HeadMountedDisplayFunctionLibrary.h"
-#endif // HMD_MODULE_INCLUDED
 
 const FName ADomPawn::LookUpBinding("LookUp");
 const FName ADomPawn::LookRightBinding("LookRight");
@@ -35,7 +23,6 @@ const FName ADomPawn::EngineAudioRPM("RPM");
 
 #define LOCTEXT_NAMESPACE "VehiclePawn"
 
-PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
 ADomPawn::ADomPawn()
 {
@@ -54,8 +41,9 @@ ADomPawn::ADomPawn()
 	static ConstructorHelpers::FObjectFinder<UPhysicalMaterial> NonSlipperyMat(TEXT("/Game/VehicleAdv/PhysicsMaterials/NonSlippery.NonSlippery"));
 	NonSlipperyMaterial = NonSlipperyMat.Object;
 
-	UWheeledVehicleMovementComponent4W* Vehicle4W = CastChecked<UWheeledVehicleMovementComponent4W>(GetVehicleMovement());
+	auto* MoveComponent = CastChecked<UChaosVehicleMovementComponent>(GetVehicleMovement());
 
+	/* Old WHeel setup
 	check(Vehicle4W->WheelSetups.Num() == 4);
 
 	// Wheels/Tyres
@@ -107,17 +95,18 @@ ADomPawn::ADomPawn()
 	Vehicle4W->TransmissionSetup.bUseGearAutoBox = true;
 	Vehicle4W->TransmissionSetup.GearSwitchTime = 0.15f;
 	Vehicle4W->TransmissionSetup.GearAutoBoxLatency = 1.0f;
+	*/
 
 	// Physics settings
 	// Adjust the center of mass - the buggy is quite low
-	UPrimitiveComponent* UpdatedPrimitive = Cast<UPrimitiveComponent>(Vehicle4W->UpdatedComponent);
+	UPrimitiveComponent* UpdatedPrimitive = Cast<UPrimitiveComponent>(MoveComponent->UpdatedComponent);
 	if (UpdatedPrimitive)
 	{
 		UpdatedPrimitive->BodyInstance.COMNudge = FVector(8.0f, 0.0f, 0.0f);
 	}
 
 	// Set the inertia scale. This controls how the mass of the vehicle is distributed.
-	Vehicle4W->InertiaTensorScale = FVector(1.0f, 1.333f, 1.2f);
+	MoveComponent->InertiaTensorScale = FVector(1.0f, 1.333f, 1.2f);
 
 	// Create a spring arm component for our chase camera
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
@@ -194,8 +183,6 @@ void ADomPawn::SetupPlayerInputComponent(class UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAction("Handbrake", IE_Pressed, this, &ADomPawn::OnHandbrakePressed);
 	PlayerInputComponent->BindAction("Handbrake", IE_Released, this, &ADomPawn::OnHandbrakeReleased);
 	PlayerInputComponent->BindAction("SwitchCamera", IE_Pressed, this, &ADomPawn::OnToggleCamera);
-
-	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &ADomPawn::OnResetVR); 
 }
 
 void ADomPawn::MoveForward(float Val)
@@ -232,7 +219,6 @@ void ADomPawn::EnableIncarView(const bool bState)
 		
 		if (bState == true)
 		{
-			OnResetVR();
 			Camera->Deactivate();
 			InternalCamera->Activate();
 		}
@@ -264,12 +250,6 @@ void ADomPawn::Tick(float Delta)
 	SetupInCarHUD();
 
 	bool bHMDActive = false;
-#if HMD_MODULE_INCLUDED
-	if ((GEngine->XRSystem.IsValid() == true ) && ( (GEngine->XRSystem->IsHeadTrackingAllowed() == true) || (GEngine->IsStereoscopic3D() == true)))
-	{
-		bHMDActive = true;
-	}
-#endif // HMD_MODULE_INCLUDED
 	if( bHMDActive == false )
 	{
 		if ( (InputComponent) && (bInCarCameraActive == true ))
@@ -280,10 +260,6 @@ void ADomPawn::Tick(float Delta)
 			InternalCamera->SetRelativeRotation(HeadRotation);
 		}
 	}	
-
-	// Pass the engine RPM to the sound component
-	float RPMToAudioScale = 2500.0f / GetVehicleMovement()->GetEngineMaxRotationSpeed();
-	EngineSoundComponent->SetFloatParameter(EngineAudioRPM, GetVehicleMovement()->GetEngineRotationSpeed()*RPMToAudioScale);
 }
 
 void ADomPawn::BeginPlay()
@@ -296,26 +272,10 @@ void ADomPawn::BeginPlay()
 	InCarSpeed->SetVisibility(bInCarCameraActive);
 	InCarGear->SetVisibility(bInCarCameraActive);
 
-	// Enable in car view if HMD is attached
-#if HMD_MODULE_INCLUDED
-	bWantInCar = UHeadMountedDisplayFunctionLibrary::IsHeadMountedDisplayEnabled();
-#endif // HMD_MODULE_INCLUDED
 
 	EnableIncarView(bWantInCar);
 	// Start an engine sound playing
 	EngineSoundComponent->Play();
-}
-
-void ADomPawn::OnResetVR()
-{
-#if HMD_MODULE_INCLUDED
-	if (GEngine->XRSystem.IsValid())
-	{
-		GEngine->XRSystem->ResetOrientationAndPosition();
-		InternalCamera->SetRelativeLocation(InternalCameraOrigin);
-		GetController()->SetControlRotation(FRotator());
-	}
-#endif // HMD_MODULE_INCLUDED
 }
 
 void ADomPawn::UpdateHUDStrings()
@@ -378,4 +338,3 @@ void ADomPawn::UpdatePhysicsMaterial()
 
 #undef LOCTEXT_NAMESPACE
 
-PRAGMA_ENABLE_DEPRECATION_WARNINGS

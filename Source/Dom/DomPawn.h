@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "WheeledVehicle.h"
+#include "WheeledVehiclePawn.h"
 #include "DomPawn.generated.h"
 
 class UPhysicalMaterial;
@@ -13,10 +13,9 @@ class UTextRenderComponent;
 class UInputComponent;
 class UAudioComponent;
 
-PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
 UCLASS(config=Game)
-class ADomPawn : public AWheeledVehicle
+class ADomPawn : public AWheeledVehiclePawn
 {
 	GENERATED_BODY()
 
@@ -107,8 +106,6 @@ public:
 	void OnHandbrakeReleased();
 	/** Switch between cameras */
 	void OnToggleCamera();
-	/** Handle reset VR device */
-	void OnResetVR();
 
 	static const FName LookUpBinding;
 	static const FName LookRightBinding;
@@ -148,4 +145,3 @@ public:
 	FORCEINLINE UAudioComponent* GetEngineSoundComponent() const { return EngineSoundComponent; }
 };
 
-PRAGMA_ENABLE_DEPRECATION_WARNINGS

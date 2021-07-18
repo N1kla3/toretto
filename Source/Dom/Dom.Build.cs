@@ -8,8 +8,9 @@ public class Dom : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "PhysXVehicles", "HeadMountedDisplay", "PhysicsCore" });
-
-		PublicDefinitions.Add("HMD_MODULE_INCLUDED=1");
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"Core", "CoreUObject", "Engine", "InputCore", "Chaos", "ChaosVehicles", "HeadMountedDisplay", "PhysicsCore"
+		});
 	}
 }

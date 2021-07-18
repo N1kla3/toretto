@@ -12,11 +12,15 @@
 	],
 	"Plugins": [
 		{
-			"Name": "PhysXVehicles",
+			"Name": "RawInput",
 			"Enabled": true
 		},
 		{
-			"Name": "RawInput",
+			"Name": "ChaosVehiclesPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "ChaosSolverPlugin",
 			"Enabled": true
 		}
 	]
