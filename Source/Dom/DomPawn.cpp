@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "DomPawn.h"
 #include "DomWheelFront.h"
 #include "DomWheelRear.h"
@@ -19,15 +17,6 @@
 #include "UObject/ConstructorHelpers.h"
 #include "GameFramework/PlayerController.h"
 
-#ifndef HMD_MODULE_INCLUDED
-#define HMD_MODULE_INCLUDED 0
-#endif
-
-// Needed for VR Headset
-#if HMD_MODULE_INCLUDED
-#include "IXRTrackingSystem.h"
-#include "HeadMountedDisplayFunctionLibrary.h"
-#endif // HMD_MODULE_INCLUDED
 
 const FName ADomPawn::LookUpBinding("LookUp");
 const FName ADomPawn::LookRightBinding("LookRight");
@@ -39,20 +28,7 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
 ADomPawn::ADomPawn()
 {
-	// Car mesh
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> CarMesh(TEXT("/Game/VehicleAdv/Vehicle/Vehicle_SkelMesh.Vehicle_SkelMesh"));
-	GetMesh()->SetSkeletalMesh(CarMesh.Object);
-	
-	static ConstructorHelpers::FClassFinder<UObject> AnimBPClass(TEXT("/Game/VehicleAdv/Vehicle/VehicleAnimationBlueprint"));
 	GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
-	GetMesh()->SetAnimInstanceClass(AnimBPClass.Class);
-
-	// Setup friction materials
-	static ConstructorHelpers::FObjectFinder<UPhysicalMaterial> SlipperyMat(TEXT("/Game/VehicleAdv/PhysicsMaterials/Slippery.Slippery"));
-	SlipperyMaterial = SlipperyMat.Object;
-		
-	static ConstructorHelpers::FObjectFinder<UPhysicalMaterial> NonSlipperyMat(TEXT("/Game/VehicleAdv/PhysicsMaterials/NonSlippery.NonSlippery"));
-	NonSlipperyMaterial = NonSlipperyMat.Object;
 
 	UWheeledVehicleMovementComponent4W* Vehicle4W = CastChecked<UWheeledVehicleMovementComponent4W>(GetVehicleMovement());
 
@@ -166,9 +142,7 @@ ADomPawn::ADomPawn()
 	InCarGear->SetupAttachment(GetMesh());
 	
 	// Setup the audio component and allocate it a sound cue
-	static ConstructorHelpers::FObjectFinder<USoundCue> SoundCue(TEXT("/Game/VehicleAdv/Sound/Engine_Loop_Cue.Engine_Loop_Cue"));
 	EngineSoundComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("EngineSound"));
-	EngineSoundComponent->SetSound(SoundCue.Object);
 	EngineSoundComponent->SetupAttachment(GetMesh());
 
 	// Colors for the in-car gear display. One for normal one for reverse
@@ -184,7 +158,7 @@ void ADomPawn::SetupPlayerInputComponent(class UInputComponent* PlayerInputCompo
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	// set up gameplay key bindings
-	check(PlayerInputComponent);
+	ensure(PlayerInputComponent);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &ADomPawn::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ADomPawn::MoveRight);
@@ -194,8 +168,6 @@ void ADomPawn::SetupPlayerInputComponent(class UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAction("Handbrake", IE_Pressed, this, &ADomPawn::OnHandbrakePressed);
 	PlayerInputComponent->BindAction("Handbrake", IE_Released, this, &ADomPawn::OnHandbrakeReleased);
 	PlayerInputComponent->BindAction("SwitchCamera", IE_Pressed, this, &ADomPawn::OnToggleCamera);
-
-	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &ADomPawn::OnResetVR); 
 }
 
 void ADomPawn::MoveForward(float Val)
@@ -232,7 +204,6 @@ void ADomPawn::EnableIncarView(const bool bState)
 		
 		if (bState == true)
 		{
-			OnResetVR();
 			Camera->Deactivate();
 			InternalCamera->Activate();
 		}
@@ -264,12 +235,6 @@ void ADomPawn::Tick(float Delta)
 	SetupInCarHUD();
 
 	bool bHMDActive = false;
-#if HMD_MODULE_INCLUDED
-	if ((GEngine->XRSystem.IsValid() == true ) && ( (GEngine->XRSystem->IsHeadTrackingAllowed() == true) || (GEngine->IsStereoscopic3D() == true)))
-	{
-		bHMDActive = true;
-	}
-#endif // HMD_MODULE_INCLUDED
 	if( bHMDActive == false )
 	{
 		if ( (InputComponent) && (bInCarCameraActive == true ))
@@ -296,26 +261,9 @@ void ADomPawn::BeginPlay()
 	InCarSpeed->SetVisibility(bInCarCameraActive);
 	InCarGear->SetVisibility(bInCarCameraActive);
 
-	// Enable in car view if HMD is attached
-#if HMD_MODULE_INCLUDED
-	bWantInCar = UHeadMountedDisplayFunctionLibrary::IsHeadMountedDisplayEnabled();
-#endif // HMD_MODULE_INCLUDED
-
 	EnableIncarView(bWantInCar);
 	// Start an engine sound playing
 	EngineSoundComponent->Play();
-}
-
-void ADomPawn::OnResetVR()
-{
-#if HMD_MODULE_INCLUDED
-	if (GEngine->XRSystem.IsValid())
-	{
-		GEngine->XRSystem->ResetOrientationAndPosition();
-		InternalCamera->SetRelativeLocation(InternalCameraOrigin);
-		GetController()->SetControlRotation(FRotator());
-	}
-#endif // HMD_MODULE_INCLUDED
 }
 
 void ADomPawn::UpdateHUDStrings()

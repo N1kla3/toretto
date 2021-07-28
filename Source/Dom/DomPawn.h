@@ -11,6 +11,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class UTextRenderComponent;
 class UInputComponent;
+class USoundCue;
 class UAudioComponent;
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
@@ -47,6 +48,9 @@ class ADomPawn : public AWheeledVehicle
 	/** Audio component for the engine sound */
 	UPROPERTY(Category = Display, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UAudioComponent* EngineSoundComponent;
+
+	UPROPERTY(EditAnywhere)
+	USoundCue* SoundCue;
 
 public:
 	ADomPawn();
@@ -107,8 +111,6 @@ public:
 	void OnHandbrakeReleased();
 	/** Switch between cameras */
 	void OnToggleCamera();
-	/** Handle reset VR device */
-	void OnResetVR();
 
 	static const FName LookUpBinding;
 	static const FName LookRightBinding;
@@ -128,8 +130,10 @@ private:
 	/* Are we on a 'slippery' surface */
 	bool bIsLowFriction;
 	/** Slippery Material instance */
+	UPROPERTY(EditAnywhere)
 	UPhysicalMaterial* SlipperyMaterial;
 	/** Non Slippery Material instance */
+	UPROPERTY(EditAnywhere)
 	UPhysicalMaterial* NonSlipperyMaterial;
 
 
